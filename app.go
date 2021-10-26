@@ -25,7 +25,7 @@ func (a *App) Initialize(user, password, dbname string) {
 	if err != nil {
 		log.Fatal(err)
 	} else {
-		fmt.Printf("Connected to the database %s", dbname)
+		fmt.Printf("Connected to the database %s \n", dbname)
 	}
 	// router
 	a.Router = mux.NewRouter()
@@ -41,11 +41,14 @@ func (a *App) initRoutes() {
 }
 
 func (a *App) Run(addr string) {
+	log.Println("App Started at", addr)
 	log.Fatal(http.ListenAndServe(addr, a.Router))
+
 }
 
 // Get Product Handler
 func (a *App) getProduct(w http.ResponseWriter, r *http.Request) {
+	log.Println("Route hit getProduct")
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"]) // parseInt
 
@@ -69,6 +72,7 @@ func (a *App) getProduct(w http.ResponseWriter, r *http.Request) {
 
 // Create Product Handler
 func (a *App) createProduct(w http.ResponseWriter, r *http.Request) {
+	log.Println("Route hit createProduct")
 	var p product
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&p); err != nil {
@@ -87,6 +91,7 @@ func (a *App) createProduct(w http.ResponseWriter, r *http.Request) {
 
 // Update Handler
 func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {
+	log.Println("Route hit updateProduct")
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 
@@ -112,6 +117,7 @@ func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {
 
 // Handler for delete
 func (a *App) deleteProduct(w http.ResponseWriter, r *http.Request) {
+	log.Println("Route hit deleteProduct")
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
@@ -130,11 +136,11 @@ func (a *App) deleteProduct(w http.ResponseWriter, r *http.Request) {
 
 // Response Makers
 func respondWithError(w http.ResponseWriter, statusCode int, msg string) {
+	log.Printf("Errored :\\%d", statusCode)
 	respondWithJSON(w, statusCode, map[string]string{"error": msg})
 }
 func respondWithJSON(w http.ResponseWriter, statusCode int, payload interface{}) {
 	response, _ := json.Marshal(payload)
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	w.Write(response)
