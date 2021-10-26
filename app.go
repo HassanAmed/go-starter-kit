@@ -18,15 +18,22 @@ type App struct {
 }
 
 func (a *App) Initialize(user, password, dbname string) {
-	connectionString := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", user, password, dbname)
+
+	defaultConnectionString := fmt.Sprintf("user=%s password=%s dbname=postgres sslmode=disable", user, password)
+	newConnectionString := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", user, password, dbname)
 	var err error
-	//Db connection
-	a.DB, err = sql.Open("postgres", connectionString)
+	//Db connection with default
+	a.DB, err = sql.Open("postgres", defaultConnectionString)
 	if err != nil {
 		log.Fatal(err)
-	} else {
-		fmt.Printf("Connected to the database %s \n", dbname)
 	}
+	a.DB.Exec("CREATE DATABASE " + dbname)
+	//Re Db connection
+	a.DB, err = sql.Open("postgres", newConnectionString)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// router
 	a.Router = mux.NewRouter()
 	a.initRoutes()
