@@ -1,61 +1,18 @@
-package main
+package controllers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
+	m "bitbucket.org/mobeen_ashraf1/go-starter-kit/models"
 	"github.com/gorilla/mux"
-	_ "github.com/lib/pq"
+	"github.com/jinzhu/gorm"
 )
-
-type App struct {
-	Router *mux.Router
-	DB     *sql.DB
-}
-
-func (a *App) Initialize(user, password, dbname string) {
-
-	defaultConnectionString := fmt.Sprintf("user=%s password=%s dbname=postgres sslmode=disable", user, password)
-	newConnectionString := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", user, password, dbname)
-	var err error
-	//Db connection with default
-	a.DB, err = sql.Open("postgres", defaultConnectionString)
-	if err != nil {
-		log.Fatal(err)
-	}
-	a.DB.Exec("CREATE DATABASE " + dbname)
-	//Re Db connection
-	a.DB, err = sql.Open("postgres", newConnectionString)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// router
-	a.Router = mux.NewRouter()
-	a.initRoutes()
-}
-
-func (a *App) initRoutes() {
-	ar := a.Router
-	ar.HandleFunc("/product/{id:[0-9]+}", a.getProduct).Methods("GET")
-	ar.HandleFunc("/product", a.createProduct).Methods("POST")
-	ar.HandleFunc("/product/{id:[0-9]+}", a.updateProduct).Methods("PUT")
-	ar.HandleFunc("/product/{id:[0-9]+}", a.deleteProduct).Methods("DELETE")
-}
-
-func (a *App) Run(addr string) {
-	log.Println("App Started at", addr)
-	log.Fatal(http.ListenAndServe(addr, a.Router))
-
-}
 
 // Get Product Handler
 func (a *App) getProduct(w http.ResponseWriter, r *http.Request) {
-	log.Println("Route hit getProduct")
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"]) // parseInt
 
@@ -64,31 +21,32 @@ func (a *App) getProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := product{ID: id}
-	if err := p.getProduct(a.DB); err != nil {
+	p := m.Product{ID: id}
+	resp, err := p.GetProduct(a.DB)
+	if err != nil {
 		switch err {
-		case sql.ErrNoRows:
+		case gorm.ErrRecordNotFound:
 			respondWithError(w, http.StatusNotFound, "Product not Found")
 		default:
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
-	respondWithJSON(w, http.StatusOK, p)
+	respondWithJSON(w, http.StatusOK, resp)
 }
 
 // Create Product Handler
 func (a *App) createProduct(w http.ResponseWriter, r *http.Request) {
-	log.Println("Route hit createProduct")
-	var p product
+	var p m.Product
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&p); err != nil {
 		fmt.Println("error", err)
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
+
 	defer r.Body.Close()
-	if err := p.createProduct(a.DB); err != nil {
+	if _, err := p.CreateProduct(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -98,7 +56,6 @@ func (a *App) createProduct(w http.ResponseWriter, r *http.Request) {
 
 // Update Handler
 func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {
-	log.Println("Route hit updateProduct")
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 
@@ -106,7 +63,7 @@ func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
 		return
 	}
-	var p product
+	var p m.Product
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&p); err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid resquest payload")
@@ -115,16 +72,16 @@ func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	p.ID = id
 
-	if err := p.updateProduct(a.DB); err != nil {
+	resp, err := p.UpdateProduct(a.DB)
+	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	respondWithJSON(w, http.StatusOK, p)
+	respondWithJSON(w, http.StatusOK, resp)
 }
 
 // Handler for delete
 func (a *App) deleteProduct(w http.ResponseWriter, r *http.Request) {
-	log.Println("Route hit deleteProduct")
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
@@ -132,8 +89,8 @@ func (a *App) deleteProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := product{ID: id}
-	if err := p.deleteProduct(a.DB); err != nil {
+	p := m.Product{ID: id}
+	if err := p.DeleteProduct(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -143,7 +100,6 @@ func (a *App) deleteProduct(w http.ResponseWriter, r *http.Request) {
 
 // Response Makers
 func respondWithError(w http.ResponseWriter, statusCode int, msg string) {
-	log.Printf("Errored :\\%d", statusCode)
 	respondWithJSON(w, statusCode, map[string]string{"error": msg})
 }
 func respondWithJSON(w http.ResponseWriter, statusCode int, payload interface{}) {
