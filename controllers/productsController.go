@@ -21,9 +21,8 @@ func (a *App) getProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := m.Product{ID: id}
-	resp, err := p.GetProduct(a.DB)
-	if err != nil {
+	p := m.Product{}
+	if err := a.DB.Table("products").Where("id = ?", id).First(&p).Error; err != nil {
 		switch err {
 		case gorm.ErrRecordNotFound:
 			respondWithError(w, http.StatusNotFound, "Product not Found")
@@ -32,7 +31,7 @@ func (a *App) getProduct(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	respondWithJSON(w, http.StatusOK, resp)
+	respondWithJSON(w, http.StatusOK, p)
 }
 
 // Create Product Handler
@@ -46,7 +45,7 @@ func (a *App) createProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
-	if _, err := p.CreateProduct(a.DB); err != nil {
+	if err := a.DB.Table("products").Create(&p).Error; err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -58,7 +57,6 @@ func (a *App) createProduct(w http.ResponseWriter, r *http.Request) {
 func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
-
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
 		return
@@ -70,14 +68,17 @@ func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	p.ID = id
 
-	resp, err := p.UpdateProduct(a.DB)
-	if err != nil {
+	if err := a.DB.Table("products").Where("id = ?", id).Updates(
+		m.Product{
+			Name:     p.Name,
+			Price:    p.Price,
+			Category: p.Category,
+		}).Error; err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	respondWithJSON(w, http.StatusOK, resp)
+	respondWithJSON(w, http.StatusOK, p)
 }
 
 // Handler for delete
@@ -89,8 +90,8 @@ func (a *App) deleteProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := m.Product{ID: id}
-	if err := p.DeleteProduct(a.DB); err != nil {
+	p := m.Product{}
+	if err := a.DB.Table("products").Where("id = ?", id).Delete(&p, id).Error; err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
