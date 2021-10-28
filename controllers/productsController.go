@@ -1,23 +1,20 @@
 package controllers
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
 	m "bitbucket.org/mobeen_ashraf1/go-starter-kit/models"
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 )
 
 // Get Product Handler
-func (a *App) getProduct(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"]) // parseInt
+func (a *App) getProduct(c *gin.Context) {
 
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
 		return
 	}
 
@@ -25,49 +22,43 @@ func (a *App) getProduct(w http.ResponseWriter, r *http.Request) {
 	if err := a.DB.Table("products").Where("id = ?", id).First(&p).Error; err != nil {
 		switch err {
 		case gorm.ErrRecordNotFound:
-			respondWithError(w, http.StatusNotFound, "Product not Found")
+			c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
 		default:
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
 		return
 	}
-	respondWithJSON(w, http.StatusOK, p)
+	c.JSON(http.StatusOK, gin.H{"result": p})
 }
 
 // Create Product Handler
-func (a *App) createProduct(w http.ResponseWriter, r *http.Request) {
+func (a *App) createProduct(c *gin.Context) {
 	var p m.Product
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&p); err != nil {
-		fmt.Println("error", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+	if err := c.ShouldBindJSON(&p); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
 		return
 	}
 
-	defer r.Body.Close()
 	if err := a.DB.Table("products").Create(&p).Error; err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, p)
+	c.JSON(http.StatusOK, gin.H{"result": p})
 }
 
 // Update Handler
-func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
+func (a *App) updateProduct(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
 		return
 	}
 	var p m.Product
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&p); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid resquest payload")
+	if err := c.ShouldBindJSON(&p); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
 		return
 	}
-	defer r.Body.Close()
 
 	if err := a.DB.Table("products").Where("id = ?", id).Updates(
 		m.Product{
@@ -75,37 +66,25 @@ func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {
 			Price:    p.Price,
 			Category: p.Category,
 		}).Error; err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	respondWithJSON(w, http.StatusOK, p)
+	c.JSON(http.StatusOK, gin.H{"result": p})
 }
 
 // Handler for delete
-func (a *App) deleteProduct(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
+func (a *App) deleteProduct(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid Product ID")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
 		return
 	}
 
 	p := m.Product{}
 	if err := a.DB.Table("products").Where("id = ?", id).Delete(&p, id).Error; err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
-}
-
-// Response Makers
-func respondWithError(w http.ResponseWriter, statusCode int, msg string) {
-	respondWithJSON(w, statusCode, map[string]string{"error": msg})
-}
-func respondWithJSON(w http.ResponseWriter, statusCode int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	w.Write(response)
+	c.JSON(http.StatusOK, gin.H{"result": "success"})
 }

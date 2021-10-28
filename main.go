@@ -11,7 +11,7 @@ import (
 // Entrypoint
 func main() {
 	if err := godotenv.Load(".env"); err != nil {
-		log.Fatalf("Error loading .env file")
+		log.Fatal("Error loading .env file")
 	}
 	a := controllers.App{}
 	a.Initialize(
@@ -22,5 +22,5 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 
-	a.Run(":4000")
+	a.Router.Run(":4000")
 }

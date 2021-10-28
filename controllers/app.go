@@ -3,18 +3,16 @@ package controllers
 import (
 	"fmt"
 	"log"
-	"net/http"
-
-	"gorm.io/driver/postgres"
 
 	m "bitbucket.org/mobeen_ashraf1/go-starter-kit/models"
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 type App struct {
-	Router *mux.Router
+	Router *gin.Engine
 	DB     *gorm.DB
 }
 
@@ -37,19 +35,14 @@ func (a *App) Initialize(host, port, user, password, dbname string) {
 	}
 	a.DB.Debug().AutoMigrate(&m.Product{})
 	// router
-	a.Router = mux.NewRouter().StrictSlash(true)
+	a.Router = gin.Default()
 	a.initRoutes()
 }
 
 func (a *App) initRoutes() {
-	ar := a.Router
-	ar.HandleFunc("/product/{id:[0-9]+}", a.getProduct).Methods("GET")
-	ar.HandleFunc("/product", a.createProduct).Methods("POST")
-	ar.HandleFunc("/product/{id:[0-9]+}", a.updateProduct).Methods("PUT")
-	ar.HandleFunc("/product/{id:[0-9]+}", a.deleteProduct).Methods("DELETE")
-}
-
-func (a *App) Run(addr string) {
-	log.Fatal(http.ListenAndServe(addr, a.Router))
-
+	router := a.Router
+	router.GET("/product/:id", a.getProduct)
+	router.POST("/product", a.createProduct)
+	router.PUT("/product/:id", a.updateProduct)
+	router.DELETE("/product/:id", a.deleteProduct)
 }
