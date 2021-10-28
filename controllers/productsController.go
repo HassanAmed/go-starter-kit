@@ -10,7 +10,7 @@ import (
 )
 
 // Get Product Handler
-func (a *App) getProduct(c *gin.Context) {
+func (a *App) GetProduct(c *gin.Context) {
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -19,7 +19,7 @@ func (a *App) getProduct(c *gin.Context) {
 	}
 
 	p := m.Product{}
-	if err := a.DB.Table("products").Where("id = ?", id).First(&p).Error; err != nil {
+	if err := a.DB.First(&p, id).Error; err != nil {
 		switch err {
 		case gorm.ErrRecordNotFound:
 			c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
@@ -32,7 +32,7 @@ func (a *App) getProduct(c *gin.Context) {
 }
 
 // Create Product Handler
-func (a *App) createProduct(c *gin.Context) {
+func (a *App) CreateProduct(c *gin.Context) {
 	var p m.Product
 	if err := c.ShouldBindJSON(&p); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
@@ -48,7 +48,7 @@ func (a *App) createProduct(c *gin.Context) {
 }
 
 // Update Handler
-func (a *App) updateProduct(c *gin.Context) {
+func (a *App) UpdateProduct(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
@@ -73,7 +73,7 @@ func (a *App) updateProduct(c *gin.Context) {
 }
 
 // Handler for delete
-func (a *App) deleteProduct(c *gin.Context) {
+func (a *App) DeleteProduct(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})

@@ -4,7 +4,8 @@ import (
 	"log"
 	"os"
 
-	controllers "bitbucket.org/mobeen_ashraf1/go-starter-kit/controllers"
+	"bitbucket.org/mobeen_ashraf1/go-starter-kit/controllers"
+	"bitbucket.org/mobeen_ashraf1/go-starter-kit/routers"
 	"github.com/joho/godotenv"
 )
 
@@ -22,5 +23,6 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 
-	a.Router.Run(":4000")
+	app := routers.InitRoutes(&a)
+	app.Router.Run(":4000")
 }

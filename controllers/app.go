@@ -34,15 +34,4 @@ func (a *App) Initialize(host, port, user, password, dbname string) {
 		log.Fatal(err)
 	}
 	a.DB.Debug().AutoMigrate(&m.Product{})
-	// router
-	a.Router = gin.Default()
-	a.initRoutes()
-}
-
-func (a *App) initRoutes() {
-	router := a.Router
-	router.GET("/product/:id", a.getProduct)
-	router.POST("/product", a.createProduct)
-	router.PUT("/product/:id", a.updateProduct)
-	router.DELETE("/product/:id", a.deleteProduct)
 }
