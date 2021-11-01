@@ -33,6 +33,5 @@ func (a *App) Initialize(host, port, user, password, dbname string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	a.DB.AutoMigrate(&m.Product{})
-	a.DB.AutoMigrate(&m.Category{})
+	a.DB.AutoMigrate(&m.Product{}, &m.Category{})
 }
