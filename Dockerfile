@@ -29,4 +29,4 @@ RUN find . -name "*.go" -type f -delete
 EXPOSE $PORT
 
 # Run the app
-CMD ["./go-starter-kit"]
+CMD ["./bin/go-starter-kit"]
