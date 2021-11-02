@@ -1,4 +1,6 @@
 IMAGE_CHECK = $(shell docker image inspect --format="exists" go-starter-kit:latest)
+LINT_SETTINGS=golint,misspell,gocyclo,gocritic,whitespace,goconst,gocognit,bodyclose,unconvert,lll,unparam,gomnd
+GOIMPORTS_CMD=go run golang.org/x/tools/cmd/goimports
 hello:
 	echo "hello there!"
 
@@ -17,9 +19,11 @@ start: build run
 
 tools:
 	go get golang.org/x/tools/cmd/goimports
-	go get github.com/kisielk/errcheck
 	go get github.com/golang/lint/golint
-	go get github.com/axw/gocov/gocov
-	go get github.com/matm/gocov-html
-	go get github.com/tools/godep
-	go get github.com/mitchellh/gox
+	
+lint:
+	golangci-lint run --timeout 1m0s -v -E ${LINT_SETTINGS}
+
+format:
+	gofmt -s -w -l .
+	${GOIMPORTS_CMD} -w .
