@@ -15,9 +15,10 @@ var (
 )
 
 func InitRoutes(a *controllers.App) *controllers.App {
-	// a := controllers.App{}
-	a.Router = gin.Default()
-	router := a.Router
+	a.Engine = gin.New()
+	a.Engine.Use(gin.Logger(), gin.CustomRecovery(middlewares.SendMail))
+	gin.Default()
+	router := a.Engine
 
 	// Login Route to get jwt
 	router.POST("/login", func(ctx *gin.Context) {

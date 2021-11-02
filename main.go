@@ -24,5 +24,5 @@ func main() {
 	)
 
 	app := routers.InitRoutes(&a)
-	app.Router.Run(":4000")
+	app.Engine.Run(":4000")
 }
