@@ -11,9 +11,9 @@ import (
 // AuthorizeJWT validates the token from the http request, returning a 401 if it's not valid
 func AuthorizeJWT() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		const BEARER_SCHEMA = "Bearer "
+		const bearerSchema = "Bearer "
 		authHeader := c.GetHeader("Authorization")
-		tokenString := authHeader[len(BEARER_SCHEMA):]
+		tokenString := authHeader[len(bearerSchema):]
 		token, err := service.NewJWTService().ValidateToken(tokenString)
 
 		if !token.Valid {

@@ -28,5 +28,4 @@ func (controller *loginController) Login(ctx *gin.Context) string {
 	}
 
 	return controller.jWtService.GenerateToken(authCreds.Username)
-
 }

@@ -40,12 +40,12 @@ func getSecretKey() string {
 }
 
 func (jwtSrv *jwtService) GenerateToken(username string) string {
-
 	// Set custom and standard claims
+	const hoursToAdd = 72
 	claims := &jwtCustomClaims{
 		username,
 		jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
+			ExpiresAt: time.Now().Add(time.Hour * hoursToAdd).Unix(),
 			Issuer:    jwtSrv.issuer,
 			IssuedAt:  time.Now().Unix(),
 		},

@@ -9,7 +9,6 @@ import (
 )
 
 func (a *App) GetCategory(c *gin.Context) {
-
 	id := c.Param("id")
 
 	ctg := m.Category{}

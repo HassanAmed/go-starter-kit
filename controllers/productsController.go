@@ -45,7 +45,6 @@ func (a *App) GetAllProducts(c *gin.Context) {
 		default:
 			sql = fmt.Sprintf(`price = '%s'`, price)
 		}
-
 	}
 	name := c.Query("name")
 	if name != "" && sql != "" {
@@ -137,7 +136,9 @@ func (a *App) UpdateProduct(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	u64, _ := strconv.ParseUint(id, 10, 64)
+	const base = 10
+	const bitsize = 64
+	u64, _ := strconv.ParseUint(id, base, bitsize)
 	p.ID = uint(u64)
 	c.JSON(http.StatusOK, gin.H{"result": p})
 }
