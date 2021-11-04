@@ -36,7 +36,7 @@ To only build first
 then run
 `make run`
 
-You can check for other targets in Makefile.
+You can check for other targets/commands in Makefile.
 
 ## **Build and Run without Docker**
 
@@ -47,3 +47,16 @@ You can also run this without docker using
 This will create a binary named `go-starter-kit` in newly created `bin` directory
 Run it
 `./bin/go-starter-kit` 
+
+## **Contribute to this project**
+Feel free to contribute to this project.
+##### Commit Pattern to Follow
+
+Please follow [conventional-commits](https://www.conventionalcommits.org/en/v1.0.0/) pattern when contributing.
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
