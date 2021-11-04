@@ -37,3 +37,7 @@ func (a *App) Initialize(host, port, user, password, dbname string) {
 		log.Fatal(err)
 	}
 }
+
+func errorResponse(err error) gin.H {
+	return gin.H{"error": err.Error()}
+}

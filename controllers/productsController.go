@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -17,9 +18,9 @@ func (a *App) GetProduct(c *gin.Context) {
 	if err := a.DB.First(&p, id).Error; err != nil {
 		switch err {
 		case gorm.ErrRecordNotFound:
-			c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
+			c.JSON(http.StatusNotFound, errorResponse(errors.New("Product not found")))
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
 		}
 		return
 	}
@@ -69,7 +70,7 @@ func (a *App) GetAllProducts(c *gin.Context) {
 		var err error
 		limit, err = strconv.Atoi(strLimit)
 		if err != nil || limit < -1 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Limit query parameter is invalid no"})
+			c.JSON(http.StatusBadRequest, errorResponse(errors.New("Limit query parameter is invalid num")))
 			return
 		}
 	}
@@ -79,7 +80,7 @@ func (a *App) GetAllProducts(c *gin.Context) {
 		var err error
 		offset, err = strconv.Atoi(strOffset)
 		if err != nil || offset < -1 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Offset query parameter is invalid no"})
+			c.JSON(http.StatusBadRequest, errorResponse(errors.New("Offset query parameter is invalid num")))
 			return
 		}
 	}
@@ -88,9 +89,9 @@ func (a *App) GetAllProducts(c *gin.Context) {
 	if err := a.DB.Where(sql).Limit(limit).Offset(offset).Order(sortQuery).Find(&products).Error; err != nil {
 		switch err {
 		case gorm.ErrRecordNotFound:
-			c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
+			c.JSON(http.StatusNotFound, errorResponse(errors.New("Product not found")))
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
 		}
 		return
 	}
@@ -101,12 +102,12 @@ func (a *App) GetAllProducts(c *gin.Context) {
 func (a *App) CreateProduct(c *gin.Context) {
 	var p m.Product
 	if err := c.ShouldBindJSON(&p); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("Invalid payload")))
 		return
 	}
 
 	if err := a.DB.Create(&p).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to add data")))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": p})
@@ -118,12 +119,12 @@ func (a *App) UpdateProduct(c *gin.Context) {
 	var p m.Product
 	var ctg m.Category
 	if err := c.ShouldBindJSON(&p); err != nil || p.Name == "" || p.Price == 0 || p.CategoryID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("Invalid payload")))
 		return
 	}
 	// verify category exists
 	if err := a.DB.First(&ctg, p.CategoryID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "No category exists for such categoryId"})
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("No category exist for given categoryID")))
 		return
 	}
 	p.Category = ctg
@@ -133,7 +134,7 @@ func (a *App) UpdateProduct(c *gin.Context) {
 			Price:      p.Price,
 			CategoryID: p.CategoryID,
 		}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
 		return
 	}
 	const base = 10
@@ -149,7 +150,7 @@ func (a *App) DeleteProduct(c *gin.Context) {
 
 	p := m.Product{}
 	if err := a.DB.Table("products").Where("id = ?", id).Delete(&p, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to delete")))
 		return
 	}
 
