@@ -19,7 +19,13 @@ var htmlBody = `
 </body>
 `
 
-func SendMail(c *gin.Context, err interface{}) {
+func PanicHandler(c *gin.Context, err interface{}) {
+	go SendMail(err)
+	c.JSON(http.StatusInternalServerError,
+		gin.H{"error": "Service crashed due to unexpected reason please try again later"})
+}
+
+func SendMail(err interface{}) {
 	m := gomail.NewMessage()
 	m.SetHeader("From", os.Getenv("MAIL_FROM"))
 	m.SetHeader("To", os.Getenv("MAIL_FROM"))
@@ -28,12 +34,8 @@ func SendMail(c *gin.Context, err interface{}) {
 	m.SetBody("text/html", htmlBody)
 	d := gomail.NewDialer("smtp.gmail.com", 587, os.Getenv("MAIL_USER"), os.Getenv("MAIL_PASS"))
 
-	// Send the email to Bob, Cora and Dan.
+	// Send the email.
 	if err := d.DialAndSend(m); err != nil {
-		log.Println("Service crashed and crash alert failed")
-		c.JSON(http.StatusInternalServerError,
-			gin.H{"error": "Service crashed due to unexpected reason please try again later"})
+		log.Println(err, "Service crashed and crash alert failed")
 	}
-	c.JSON(http.StatusInternalServerError,
-		gin.H{"error": "Service crashed due to unexpected reason please try again later"})
 }

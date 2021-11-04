@@ -16,7 +16,7 @@ var (
 
 func InitRoutes(a *controllers.App) *controllers.App {
 	a.Engine = gin.New()
-	a.Engine.Use(gin.Logger(), gin.CustomRecovery(middlewares.SendMail))
+	a.Engine.Use(gin.Logger(), gin.CustomRecovery(middlewares.PanicHandler))
 	gin.Default()
 	router := a.Engine
 
