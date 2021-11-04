@@ -11,7 +11,7 @@ import (
 )
 
 type App struct {
-	Router *gin.Engine
+	Engine *gin.Engine
 	DB     *gorm.DB
 }
 
