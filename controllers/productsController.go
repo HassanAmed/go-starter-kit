@@ -84,18 +84,28 @@ func (a *App) GetAllProducts(c *gin.Context) {
 			return
 		}
 	}
+	var count int64
 
-	products := []m.Product{}
-	if err := a.DB.Where(sql).Limit(limit).Offset(offset).Order(sortQuery).Find(&products).Error; err != nil {
+	if err := a.DB.Model(&m.Product{}).Where(sql).Count(&count).Error; err != nil {
 		switch err.Error() {
 		case "record not found":
-			c.JSON(http.StatusNotFound, errorResponse(errors.New("Product not found")))
+			c.JSON(http.StatusNotFound, errorResponse(errors.New("No Rows Matched Filter")))
 		default:
 			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
 		}
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"result": products, "count": len(products)})
+	products := []m.Product{}
+	if err := a.DB.Where(sql).Limit(limit).Offset(offset).Order(sortQuery).Find(&products).Error; err != nil {
+		switch err.Error() {
+		case "record not found":
+			c.JSON(http.StatusNotFound, errorResponse(errors.New("Products not found")))
+		default:
+			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"totalCount": count, "result": products, "productsCount": len(products)})
 }
 
 // Create Product Handler
