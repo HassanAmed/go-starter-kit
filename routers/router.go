@@ -40,7 +40,9 @@ func InitRoutes(a *controllers.App) *controllers.App {
 		rg.DELETE("/product/:id", a.DeleteProduct)
 		rg.GET("/category/:id", a.GetCategory)
 		rg.POST("/category", a.CreateCategory)
+		rg.PUT("/category/:id", a.UpdateCategory)
 		rg.DELETE("/category/:id", a.DeleteCategory)
+
 	}
 	return a
 }

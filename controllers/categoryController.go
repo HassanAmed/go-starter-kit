@@ -3,6 +3,7 @@ package controllers
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	m "bitbucket.org/mobeen_ashraf1/go-starter-kit/models"
 	"github.com/gin-gonic/gin"
@@ -42,6 +43,34 @@ func (a *App) CreateCategory(c *gin.Context) {
 		return
 	}
 
+	c.JSON(http.StatusOK, gin.H{"result": ctg})
+}
+
+// Update Handler
+func (a *App) UpdateCategory(c *gin.Context) {
+	id := c.Param("id")
+
+	var ctg m.Category
+	if err := c.ShouldBindJSON(&ctg); err != nil || ctg.Name == "" {
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("Invalid payload")))
+		return
+	}
+	result := a.DB.Model(&ctg).Where("id = ?", id).Update("name", ctg.Name)
+	switch {
+	case result.Error != nil:
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to update category")))
+		return
+	case result.RowsAffected < 1:
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("No rows affected from update")))
+		return
+	case !result.Statement.Changed("Name"):
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Update no affect")))
+		return
+	}
+	const base = 10
+	const bitsize = 64
+	u64, _ := strconv.ParseUint(id, base, bitsize)
+	ctg.ID = uint(u64)
 	c.JSON(http.StatusOK, gin.H{"result": ctg})
 }
 
