@@ -17,7 +17,6 @@ var (
 func InitRoutes(a *controllers.App) *controllers.App {
 	a.Engine = gin.New()
 	a.Engine.Use(gin.Logger(), gin.CustomRecovery(middlewares.PanicHandler))
-	gin.Default()
 	router := a.Engine
 
 	// Login Route to get jwt
@@ -41,6 +40,7 @@ func InitRoutes(a *controllers.App) *controllers.App {
 		rg.DELETE("/product/:id", a.DeleteProduct)
 		rg.GET("/category/:id", a.GetCategory)
 		rg.POST("/category", a.CreateCategory)
+		rg.DELETE("/category/:id", a.DeleteCategory)
 	}
 	return a
 }

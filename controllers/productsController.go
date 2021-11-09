@@ -8,16 +8,16 @@ import (
 
 	m "bitbucket.org/mobeen_ashraf1/go-starter-kit/models"
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
 )
 
 // Get Product Handler
 func (a *App) GetProduct(c *gin.Context) {
 	id := c.Param("id")
 	p := m.Product{}
-	if err := a.DB.First(&p, id).Error; err != nil {
-		switch err {
-		case gorm.ErrRecordNotFound:
+	err := a.DB.First(&p, id).Error
+	if err != nil {
+		switch err.Error() {
+		case "record not found":
 			c.JSON(http.StatusNotFound, errorResponse(errors.New("Product not found")))
 		default:
 			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
@@ -87,8 +87,8 @@ func (a *App) GetAllProducts(c *gin.Context) {
 
 	products := []m.Product{}
 	if err := a.DB.Where(sql).Limit(limit).Offset(offset).Order(sortQuery).Find(&products).Error; err != nil {
-		switch err {
-		case gorm.ErrRecordNotFound:
+		switch err.Error() {
+		case "record not found":
 			c.JSON(http.StatusNotFound, errorResponse(errors.New("Product not found")))
 		default:
 			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
@@ -107,7 +107,7 @@ func (a *App) CreateProduct(c *gin.Context) {
 	}
 
 	if err := a.DB.Create(&p).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to add data")))
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to create product")))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": p})
@@ -118,12 +118,12 @@ func (a *App) UpdateProduct(c *gin.Context) {
 	id := c.Param("id")
 	var p m.Product
 	var ctg m.Category
-	if err := c.ShouldBindJSON(&p); err != nil || p.Name == "" || p.Price == 0 || p.CategoryID == 0 {
+	if err := c.ShouldBindJSON(&p); err != nil || p.Name == "" || p.Price == 0 || p.CategoryId == 0 {
 		c.JSON(http.StatusBadRequest, errorResponse(errors.New("Invalid payload")))
 		return
 	}
 	// verify category exists
-	if err := a.DB.First(&ctg, p.CategoryID).Error; err != nil {
+	if err := a.DB.First(&ctg, p.CategoryId).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("No category exist for given categoryID")))
 		return
 	}
@@ -132,7 +132,7 @@ func (a *App) UpdateProduct(c *gin.Context) {
 		m.Product{
 			Name:       p.Name,
 			Price:      p.Price,
-			CategoryID: p.CategoryID,
+			CategoryId: p.CategoryId,
 		}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
 		return
