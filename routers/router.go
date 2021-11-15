@@ -15,6 +15,7 @@ var (
 )
 
 func InitRoutes(a *controllers.App) *controllers.App {
+	gin.SetMode(gin.ReleaseMode)
 	a.Engine = gin.New()
 	a.Engine.Use(gin.Logger(), gin.CustomRecovery(middlewares.PanicHandler))
 	router := a.Engine

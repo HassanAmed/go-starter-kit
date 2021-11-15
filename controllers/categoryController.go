@@ -7,13 +7,26 @@ import (
 
 	m "bitbucket.org/mobeen_ashraf1/go-starter-kit/models"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func (a *App) GetCategory(c *gin.Context) {
 	id := c.Param("id")
 
-	ctg := m.Category{}
-	err := a.DB.Preload("Products").Find(&ctg, id).Error
+	type Product struct {
+		ID         uint
+		Name       string
+		Price      float64
+		CategoryId uint `json:"-"`
+	}
+	type Category struct {
+		ID       uint
+		Name     string
+		Products []Product
+	}
+
+	ctg := Category{}
+	err := a.DB.Table("categories").Preload("Products").Find(&ctg, id).Error
 	if err != nil {
 		switch err.Error() {
 		case "record not found":
@@ -42,8 +55,12 @@ func (a *App) CreateCategory(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error creating record")))
 		return
 	}
+	response := map[string]interface{}{
+		"ID":   ctg.ID,
+		"name": ctg.Name,
+	}
 
-	c.JSON(http.StatusOK, gin.H{"result": ctg})
+	c.JSON(http.StatusOK, gin.H{"result": response})
 }
 
 // Update Handler
@@ -63,15 +80,17 @@ func (a *App) UpdateCategory(c *gin.Context) {
 	case result.RowsAffected < 1:
 		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("No rows affected from update")))
 		return
-	case !result.Statement.Changed("Name"):
-		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Update no affect")))
-		return
 	}
 	const base = 10
 	const bitsize = 64
 	u64, _ := strconv.ParseUint(id, base, bitsize)
 	ctg.ID = uint(u64)
-	c.JSON(http.StatusOK, gin.H{"result": ctg})
+
+	response := map[string]interface{}{
+		"ID":   ctg.ID,
+		"name": ctg.Name,
+	}
+	c.JSON(http.StatusOK, gin.H{"result": response})
 }
 
 func (a *App) DeleteCategory(c *gin.Context) {
@@ -79,33 +98,31 @@ func (a *App) DeleteCategory(c *gin.Context) {
 	ctg := m.Category{}
 	products := m.Product{}
 
-	if err := a.DB.First(&ctg, id).Error; err != nil {
-		switch err.Error() {
-		case "record not found":
-			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Category does not exist.")))
-			return
-		default:
-			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while fetching category to delete.")))
-			return
+	txErr := a.DB.Transaction(func(tx *gorm.DB) error {
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
+
+		if err := tx.First(&ctg, id).Error; err != nil {
+			return err
 		}
-	}
-	if err := a.DB.Delete(&ctg, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while deleting category.")))
+
+		if err := tx.Delete(&ctg, id).Error; err != nil {
+			return err
+		}
+		err := tx.Where("category_id = ?", id).Delete(&products).Error
+		if err != nil {
+			return err
+		}
+		//commit
+		return nil
+	})
+	if txErr != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(txErr))
 		return
 	}
-	if err := a.DB.Where("category_id = ?", id).Delete(&products).Error; err != nil {
-		switch err.Error() {
-		case "record not found":
-			c.JSON(http.StatusOK, gin.H{"result": "success"})
-			return
-		default:
-			if err := a.DB.Unscoped().Model(&ctg).Where("id = ?", id).Updates(map[string]interface{}{"deleted_at": "NULL"}).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while deleting associated products of category")))
-				return
-			}
-			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while deleting category Tx Reverted")))
-			return
-		}
-	}
+
 	c.JSON(http.StatusOK, gin.H{"result": "success"})
 }
