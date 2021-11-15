@@ -78,7 +78,7 @@ func (a *App) UpdateCategory(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to update category")))
 		return
 	case result.RowsAffected < 1:
-		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("No rows affected from update")))
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("No record found against id. Please send valid id")))
 		return
 	}
 	const base = 10

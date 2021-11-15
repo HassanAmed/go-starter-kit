@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -9,16 +10,6 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-var htmlBody = `
-<html>
-<head>
-   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-</head>
-<body>
-   <p>You service crashed due to unexpected reasons please check the logs</p>
-</body>
-`
-
 func PanicHandler(c *gin.Context, err interface{}) {
 	go SendMail(err)
 	c.JSON(http.StatusInternalServerError,
@@ -26,6 +17,16 @@ func PanicHandler(c *gin.Context, err interface{}) {
 }
 
 func SendMail(err interface{}) {
+	var htmlBody = fmt.Sprintf(`
+	<html>
+	<head>
+	   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	</head>
+	<body>
+	   <p>You service crashed with error %s</p>
+	</body>
+	`, err)
+
 	m := gomail.NewMessage()
 	m.SetHeader("From", os.Getenv("MAIL_FROM"))
 	m.SetHeader("To", os.Getenv("MAIL_FROM"))
