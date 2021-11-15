@@ -1,8 +1,6 @@
 package routers
 
 import (
-	"net/http"
-
 	"bitbucket.org/mobeen_ashraf1/go-starter-kit/controllers"
 	"bitbucket.org/mobeen_ashraf1/go-starter-kit/middlewares"
 	"bitbucket.org/mobeen_ashraf1/go-starter-kit/service"
@@ -21,16 +19,8 @@ func InitRoutes(a *controllers.App) *controllers.App {
 	router := a.Engine
 
 	// Login Route to get jwt
-	router.POST("/login", func(ctx *gin.Context) {
-		token := loginController.Login(ctx)
-		if token != "" {
-			ctx.JSON(http.StatusOK, gin.H{
-				"token": token,
-			})
-		} else {
-			ctx.JSON(http.StatusUnauthorized, nil)
-		}
-	})
+	router.POST("/signup", loginController.SignUp)
+	router.POST("/login", loginController.Login)
 
 	rg := router.Group("/api", middlewares.AuthorizeJWT())
 	{
