@@ -3,6 +3,7 @@ package controllers
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -24,7 +25,13 @@ func (a *App) GetProduct(c *gin.Context) {
 		}
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"result": p})
+	response := map[string]interface{}{
+		"ID":         p.ID,
+		"name":       p.Name,
+		"price":      p.Price,
+		"categoryId": p.CategoryId,
+	}
+	c.JSON(http.StatusOK, gin.H{"result": response})
 }
 
 // Get All Products
@@ -86,6 +93,14 @@ func (a *App) GetAllProducts(c *gin.Context) {
 	}
 	var count int64
 
+	type Product struct {
+		ID         uint
+		Name       string
+		Price      float64
+		CategoryId uint
+		Category   string
+	}
+
 	if err := a.DB.Model(&m.Product{}).Where(sql).Count(&count).Error; err != nil {
 		switch err.Error() {
 		case "record not found":
@@ -96,7 +111,7 @@ func (a *App) GetAllProducts(c *gin.Context) {
 		return
 	}
 	products := []m.Product{}
-	if err := a.DB.Where(sql).Limit(limit).Offset(offset).Order(sortQuery).Find(&products).Error; err != nil {
+	if err := a.DB.Table("products").Preload("Category").Where(sql).Limit(limit).Offset(offset).Order(sortQuery).Find(&products).Error; err != nil {
 		switch err.Error() {
 		case "record not found":
 			c.JSON(http.StatusNotFound, errorResponse(errors.New("Products not found")))
@@ -105,7 +120,20 @@ func (a *App) GetAllProducts(c *gin.Context) {
 		}
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"totalCount": count, "result": products, "productsCount": len(products)})
+	response := make([]Product, len(products))
+
+	for i := 0; i < len(products); i++ {
+		log.Println(response)
+		response[i] = Product{
+			products[i].ID,
+			products[i].Name,
+			products[i].Price,
+			products[i].CategoryId,
+			products[i].Category.Name,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"totalCount": count, "result": response, "productsCount": len(products)})
 }
 
 // Create Product Handler
@@ -120,7 +148,13 @@ func (a *App) CreateProduct(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to create product")))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"result": p})
+	response := map[string]interface{}{
+		"ID":         p.ID,
+		"name":       p.Name,
+		"price":      p.Price,
+		"categoryId": p.CategoryId,
+	}
+	c.JSON(http.StatusCreated, gin.H{"result": response})
 }
 
 // Update Handler
@@ -151,7 +185,13 @@ func (a *App) UpdateProduct(c *gin.Context) {
 	const bitsize = 64
 	u64, _ := strconv.ParseUint(id, base, bitsize)
 	p.ID = uint(u64)
-	c.JSON(http.StatusOK, gin.H{"result": p})
+	response := map[string]interface{}{
+		"ID":         p.ID,
+		"name":       p.Name,
+		"price":      p.Price,
+		"categoryId": p.CategoryId,
+	}
+	c.JSON(http.StatusOK, gin.H{"result": response})
 }
 
 // Handler for delete
@@ -159,7 +199,7 @@ func (a *App) DeleteProduct(c *gin.Context) {
 	id := c.Param("id")
 
 	p := m.Product{}
-	if err := a.DB.Table("products").Where("id = ?", id).Delete(&p, id).Error; err != nil {
+	if err := a.DB.Delete(&p, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to delete")))
 		return
 	}
