@@ -15,9 +15,10 @@ var (
 )
 
 func InitRoutes(a *controllers.App) *controllers.App {
-	// a := controllers.App{}
-	a.Router = gin.Default()
-	router := a.Router
+	gin.SetMode(gin.ReleaseMode)
+	a.Engine = gin.New()
+	a.Engine.Use(gin.Logger(), gin.CustomRecovery(middlewares.PanicHandler))
+	router := a.Engine
 
 	// Login Route to get jwt
 	router.POST("/login", func(ctx *gin.Context) {
@@ -40,6 +41,9 @@ func InitRoutes(a *controllers.App) *controllers.App {
 		rg.DELETE("/product/:id", a.DeleteProduct)
 		rg.GET("/category/:id", a.GetCategory)
 		rg.POST("/category", a.CreateCategory)
+		rg.PUT("/category/:id", a.UpdateCategory)
+		rg.DELETE("/category/:id", a.DeleteCategory)
+
 	}
 	return a
 }

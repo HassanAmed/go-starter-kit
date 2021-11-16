@@ -25,5 +25,6 @@ lint:
 	golangci-lint run --timeout 1m0s -v -E ${LINT_SETTINGS}
 
 format:
+	go mod tidy
 	gofmt -s -w -l .
 	${GOIMPORTS_CMD} -w .
