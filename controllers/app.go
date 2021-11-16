@@ -18,6 +18,8 @@ type App struct {
 	DB     *gorm.DB
 }
 
+var db *gorm.DB
+
 func (a *App) Initialize(host, port, user, password, dbname string) {
 	dsnDefault := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=postgres port=%s sslmode=disable", host, user, password, port)
@@ -44,9 +46,13 @@ func (a *App) Initialize(host, port, user, password, dbname string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err = a.DB.AutoMigrate(&m.Product{}, &m.Category{}); err != nil {
+	if err = a.DB.AutoMigrate(&m.Product{}, &m.Category{}, &m.User{}); err != nil {
 		log.Fatal(err)
 	}
+	db = a.DB
+}
+func GetDB() *gorm.DB {
+	return db
 }
 
 func errorResponse(err error) gin.H {
