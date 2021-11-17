@@ -12,7 +12,10 @@ import (
 
 func (a *App) GetCategory(c *gin.Context) {
 	id := c.Param("id")
-
+	if result := paramIsInt(id); result == false {
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
+		return
+	}
 	type Product struct {
 		ID         uint
 		Name       string
@@ -27,17 +30,13 @@ func (a *App) GetCategory(c *gin.Context) {
 
 	ctg := Category{}
 	err := a.DB.Table("categories").Preload("Products").Find(&ctg, id).Error
-	if err != nil {
-		switch err.Error() {
-		case "record not found":
-			c.JSON(http.StatusNotFound, errorResponse(errors.New("Category not found")))
+	if err != nil || ctg.ID == 0 {
+		switch {
+		case ctg.ID == 0:
+			c.JSON(http.StatusNotFound, errorResponse(errors.New("category not found")))
 		default:
-			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Unexpected error while fetching data from db")))
+			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("unknown error while fetching data from db")))
 		}
-		return
-	}
-	if ctg.Name == "" {
-		c.JSON(http.StatusNotFound, errorResponse(errors.New("Category not found")))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": ctg})
@@ -52,8 +51,12 @@ func (a *App) CreateCategory(c *gin.Context) {
 	}
 
 	if err := a.DB.Create(&ctg).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error creating record")))
-		return
+		switch {
+		case IsErrorCode(err, UniqueViolationErrCode):
+			c.JSON(http.StatusBadRequest, errorResponse(errors.New("category already exists. please use a unique category name")))
+		default:
+			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("unknown error while trying to create product")))
+		}
 	}
 	response := map[string]interface{}{
 		"ID":   ctg.ID,
@@ -66,7 +69,10 @@ func (a *App) CreateCategory(c *gin.Context) {
 // Update Handler
 func (a *App) UpdateCategory(c *gin.Context) {
 	id := c.Param("id")
-
+	if result := paramIsInt(id); result == false {
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
+		return
+	}
 	var ctg m.Category
 	if err := c.ShouldBindJSON(&ctg); err != nil || ctg.Name == "" {
 		c.JSON(http.StatusBadRequest, errorResponse(errors.New("Invalid payload")))
@@ -95,6 +101,10 @@ func (a *App) UpdateCategory(c *gin.Context) {
 
 func (a *App) DeleteCategory(c *gin.Context) {
 	id := c.Param("id")
+	if result := paramIsInt(id); result == false {
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
+		return
+	}
 	ctg := m.Category{}
 	products := m.Product{}
 

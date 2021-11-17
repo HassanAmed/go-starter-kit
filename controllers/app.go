@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	m "bitbucket.org/mobeen_ashraf1/go-starter-kit/models"
 	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -57,4 +59,27 @@ func GetDB() *gorm.DB {
 
 func errorResponse(err error) gin.H {
 	return gin.H{"error": err.Error()}
+}
+
+func paramIsInt(s string) bool {
+	_, err := strconv.Atoi(s)
+	if err == nil {
+		return true
+	}
+	return false
+}
+
+func paramIsFloat(s string) bool {
+	_, err := strconv.ParseFloat(s, 64)
+	if err == nil {
+		return true
+	}
+	return false
+}
+
+func IsErrorCode(err error, errcode pq.ErrorCode) bool {
+	if pgerr, ok := err.(*pq.Error); ok {
+		return pgerr.Code == errcode
+	}
+	return false
 }

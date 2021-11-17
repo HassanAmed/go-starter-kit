@@ -10,6 +10,9 @@
 #Exe
 bin/*
 
+#Debugger bin
+__debug_bin
+
 # Node artifact files
 node_modules/
 dist/
