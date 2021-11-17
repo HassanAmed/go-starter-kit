@@ -24,5 +24,7 @@ func main() {
 	)
 
 	app := routers.InitRoutes(&a)
-	app.Engine.Run(":4000")
+	if err := app.Engine.Run(":4000"); err != nil {
+		log.Fatal("Failed to start server")
+	}
 }

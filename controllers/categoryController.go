@@ -12,7 +12,7 @@ import (
 
 func (a *App) GetCategory(c *gin.Context) {
 	id := c.Param("id")
-	if result := paramIsInt(id); result == false {
+	if result := paramIsInt(id); !result {
 		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
 		return
 	}
@@ -20,7 +20,7 @@ func (a *App) GetCategory(c *gin.Context) {
 		ID         uint
 		Name       string
 		Price      float64
-		CategoryId uint `json:"-"`
+		CategoryID uint `json:"-"`
 	}
 	type Category struct {
 		ID       uint
@@ -53,9 +53,11 @@ func (a *App) CreateCategory(c *gin.Context) {
 	if err := a.DB.Create(&ctg).Error; err != nil {
 		switch {
 		case IsErrorCode(err, UniqueViolationErrCode):
-			c.JSON(http.StatusBadRequest, errorResponse(errors.New("category already exists. please use a unique category name")))
+			c.JSON(http.StatusBadRequest,
+				errorResponse(errors.New("category already exists. please use a unique category name")))
 		default:
-			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("unknown error while trying to create product")))
+			c.JSON(http.StatusInternalServerError,
+				errorResponse(errors.New("unknown error while trying to create product")))
 		}
 	}
 	response := map[string]interface{}{
@@ -69,7 +71,7 @@ func (a *App) CreateCategory(c *gin.Context) {
 // Update Handler
 func (a *App) UpdateCategory(c *gin.Context) {
 	id := c.Param("id")
-	if result := paramIsInt(id); result == false {
+	if result := paramIsInt(id); !result {
 		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
 		return
 	}
@@ -101,7 +103,7 @@ func (a *App) UpdateCategory(c *gin.Context) {
 
 func (a *App) DeleteCategory(c *gin.Context) {
 	id := c.Param("id")
-	if result := paramIsInt(id); result == false {
+	if result := paramIsInt(id); !result {
 		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
 		return
 	}
@@ -126,7 +128,7 @@ func (a *App) DeleteCategory(c *gin.Context) {
 		if err != nil {
 			return err
 		}
-		//commit
+		// commit
 		return nil
 	})
 	if txErr != nil {

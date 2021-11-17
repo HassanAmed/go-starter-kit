@@ -9,6 +9,7 @@ import (
 	m "bitbucket.org/mobeen_ashraf1/go-starter-kit/models"
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
+	"gorm.io/gorm"
 )
 
 const (
@@ -21,15 +22,15 @@ const (
 // Get Product Handler
 func (a *App) GetProduct(c *gin.Context) {
 	id := c.Param("id")
-	if result := paramIsInt(id); result == false {
+	if result := paramIsInt(id); !result {
 		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
 		return
 	}
 	p := m.Product{}
 	err := a.DB.First(&p, id).Error
 	if err != nil {
-		switch err.Error() {
-		case "record not found":
+		switch err {
+		case gorm.ErrRecordNotFound:
 			c.JSON(http.StatusNotFound, errorResponse(errors.New("product not found")))
 		default:
 			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("unknown error while trying to fetch data")))
@@ -40,7 +41,7 @@ func (a *App) GetProduct(c *gin.Context) {
 		"ID":         p.ID,
 		"name":       p.Name,
 		"price":      p.Price,
-		"categoryId": p.CategoryId,
+		"categoryID": p.CategoryID,
 	}
 	c.JSON(http.StatusOK, gin.H{"result": response})
 }
@@ -52,7 +53,7 @@ func (a *App) GetAllProducts(c *gin.Context) {
 	op := c.Query("op")
 	price := c.Query("price")
 	if price != "" {
-		if result := paramIsInt(price); result == false {
+		if result := paramIsFloat(price); !result {
 			c.JSON(http.StatusBadRequest, errorResponse(errors.New("price parameter is not a valid float")))
 			return
 		}
@@ -112,31 +113,26 @@ func (a *App) GetAllProducts(c *gin.Context) {
 		ID         uint
 		Name       string
 		Price      float64
-		CategoryId uint
+		categoryID uint
 		Category   string
 	}
 
-	if err := a.DB.Model(&m.Product{}).Where(sql).Count(&count).Error; err != nil {
-		switch err.Error() {
-		case "record not found":
-			c.JSON(http.StatusNotFound, errorResponse(errors.New("no record not found")))
+	if err := a.DB.Model(&m.Product{}).Where(sql).Count(&count).Error; err != nil || count == 0 {
+		switch {
+		case count == 0:
+			c.JSON(http.StatusNotFound, errorResponse(errors.New("no record matched filter")))
 		default:
 			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
 		}
 		return
 	}
-	if count == 0 {
-		c.JSON(http.StatusNotFound, errorResponse(errors.New("no record matched filter")))
-		return
-	}
+
 	products := []m.Product{}
-	if err := a.DB.Table("products").Preload("Category").Where(sql).Limit(limit).Offset(offset).Order(sortQuery).Find(&products).Error; err != nil {
-		switch err.Error() {
-		case "record not found":
-			c.JSON(http.StatusNotFound, errorResponse(errors.New("Products not found")))
-		default:
-			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("unknown error while trying to fetch data")))
-		}
+	if err := a.DB.Table("products").Preload("Category").Where(sql).
+		Limit(limit).Offset(offset).Order(sortQuery).Find(&products).Error; err != nil {
+		c.JSON(http.StatusInternalServerError,
+			errorResponse(errors.New("unknown error while trying to fetch data")))
+
 		return
 	}
 	response := make([]Product, len(products))
@@ -146,7 +142,7 @@ func (a *App) GetAllProducts(c *gin.Context) {
 			products[i].ID,
 			products[i].Name,
 			products[i].Price,
-			products[i].CategoryId,
+			products[i].CategoryID,
 			products[i].Category.Name,
 		}
 	}
@@ -178,7 +174,7 @@ func (a *App) CreateProduct(c *gin.Context) {
 		"ID":         p.ID,
 		"name":       p.Name,
 		"price":      p.Price,
-		"categoryId": p.CategoryId,
+		"categoryID": p.CategoryID,
 	}
 	c.JSON(http.StatusCreated, gin.H{"result": response})
 }
@@ -186,19 +182,19 @@ func (a *App) CreateProduct(c *gin.Context) {
 // Update Handler
 func (a *App) UpdateProduct(c *gin.Context) {
 	id := c.Param("id")
-	if result := paramIsInt(id); result == false {
+	if result := paramIsInt(id); !result {
 		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
 		return
 	}
 	var p m.Product
 	var ctg m.Category
-	if err := c.ShouldBindJSON(&p); err != nil || p.Name == "" || p.Price == 0 || p.CategoryId == 0 {
+	if err := c.ShouldBindJSON(&p); err != nil || p.Name == "" || p.Price == 0 || p.CategoryID == 0 {
 		c.JSON(http.StatusBadRequest, errorResponse(errors.New("invalid payload")))
 		return
 	}
 	// verify category exists
-	if err := a.DB.First(&ctg, p.CategoryId).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("no category exist for given categoryId")))
+	if err := a.DB.First(&ctg, p.CategoryID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("no category exist for given categoryID")))
 		return
 	}
 	// verify product exists
@@ -211,7 +207,7 @@ func (a *App) UpdateProduct(c *gin.Context) {
 		m.Product{
 			Name:       p.Name,
 			Price:      p.Price,
-			CategoryId: p.CategoryId,
+			CategoryID: p.CategoryID,
 		}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("unknown error while trying to fetch data")))
 		return
@@ -224,7 +220,7 @@ func (a *App) UpdateProduct(c *gin.Context) {
 		"ID":         p.ID,
 		"name":       p.Name,
 		"price":      p.Price,
-		"categoryId": p.CategoryId,
+		"categoryID": p.CategoryID,
 	}
 	c.JSON(http.StatusOK, gin.H{"result": response})
 }
@@ -232,7 +228,7 @@ func (a *App) UpdateProduct(c *gin.Context) {
 // Handler for delete
 func (a *App) DeleteProduct(c *gin.Context) {
 	id := c.Param("id")
-	if result := paramIsInt(id); result == false {
+	if result := paramIsInt(id); !result {
 		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
 		return
 	}

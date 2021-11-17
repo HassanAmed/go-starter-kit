@@ -63,18 +63,12 @@ func errorResponse(err error) gin.H {
 
 func paramIsInt(s string) bool {
 	_, err := strconv.Atoi(s)
-	if err == nil {
-		return true
-	}
-	return false
+	return err == nil
 }
 
 func paramIsFloat(s string) bool {
 	_, err := strconv.ParseFloat(s, 64)
-	if err == nil {
-		return true
-	}
-	return false
+	return err == nil
 }
 
 func IsErrorCode(err error, errcode pq.ErrorCode) bool {
