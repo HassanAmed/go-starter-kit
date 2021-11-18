@@ -3,25 +3,37 @@ package controllers
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
 	m "bitbucket.org/mobeen_ashraf1/go-starter-kit/models"
 	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
+	"gorm.io/gorm"
+)
+
+const (
+	UniqueViolationErrCode = pq.ErrorCode("23505")
+)
+const (
+	FkeyViolationErrCode = pq.ErrorCode("23503")
 )
 
 // Get Product Handler
 func (a *App) GetProduct(c *gin.Context) {
 	id := c.Param("id")
+	if result := paramIsInt(id); !result {
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
+		return
+	}
 	p := m.Product{}
 	err := a.DB.First(&p, id).Error
 	if err != nil {
-		switch err.Error() {
-		case "record not found":
-			c.JSON(http.StatusNotFound, errorResponse(errors.New("Product not found")))
+		switch err {
+		case gorm.ErrRecordNotFound:
+			c.JSON(http.StatusNotFound, errorResponse(errors.New("product not found")))
 		default:
-			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
+			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("unknown error while trying to fetch data")))
 		}
 		return
 	}
@@ -29,7 +41,7 @@ func (a *App) GetProduct(c *gin.Context) {
 		"ID":         p.ID,
 		"name":       p.Name,
 		"price":      p.Price,
-		"categoryId": p.CategoryId,
+		"categoryID": p.CategoryID,
 	}
 	c.JSON(http.StatusOK, gin.H{"result": response})
 }
@@ -41,6 +53,10 @@ func (a *App) GetAllProducts(c *gin.Context) {
 	op := c.Query("op")
 	price := c.Query("price")
 	if price != "" {
+		if result := paramIsFloat(price); !result {
+			c.JSON(http.StatusBadRequest, errorResponse(errors.New("price parameter is not a valid float")))
+			return
+		}
 		switch op {
 		case "gt":
 			sql = fmt.Sprintf(`price > '%s'`, price)
@@ -77,7 +93,7 @@ func (a *App) GetAllProducts(c *gin.Context) {
 		var err error
 		limit, err = strconv.Atoi(strLimit)
 		if err != nil || limit < -1 {
-			c.JSON(http.StatusBadRequest, errorResponse(errors.New("Limit query parameter is invalid num")))
+			c.JSON(http.StatusBadRequest, errorResponse(errors.New("limit query parameter is invalid num")))
 			return
 		}
 	}
@@ -87,7 +103,7 @@ func (a *App) GetAllProducts(c *gin.Context) {
 		var err error
 		offset, err = strconv.Atoi(strOffset)
 		if err != nil || offset < -1 {
-			c.JSON(http.StatusBadRequest, errorResponse(errors.New("Offset query parameter is invalid num")))
+			c.JSON(http.StatusBadRequest, errorResponse(errors.New("offset query parameter is invalid num")))
 			return
 		}
 	}
@@ -97,38 +113,36 @@ func (a *App) GetAllProducts(c *gin.Context) {
 		ID         uint
 		Name       string
 		Price      float64
-		CategoryId uint
+		categoryID uint
 		Category   string
 	}
 
-	if err := a.DB.Model(&m.Product{}).Where(sql).Count(&count).Error; err != nil {
-		switch err.Error() {
-		case "record not found":
-			c.JSON(http.StatusNotFound, errorResponse(errors.New("No Rows Matched Filter")))
+	if err := a.DB.Model(&m.Product{}).Where(sql).Count(&count).Error; err != nil || count == 0 {
+		switch {
+		case count == 0:
+			c.JSON(http.StatusNotFound, errorResponse(errors.New("no record matched filter")))
 		default:
 			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
 		}
 		return
 	}
+
 	products := []m.Product{}
-	if err := a.DB.Table("products").Preload("Category").Where(sql).Limit(limit).Offset(offset).Order(sortQuery).Find(&products).Error; err != nil {
-		switch err.Error() {
-		case "record not found":
-			c.JSON(http.StatusNotFound, errorResponse(errors.New("Products not found")))
-		default:
-			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
-		}
+	if err := a.DB.Table("products").Preload("Category").Where(sql).
+		Limit(limit).Offset(offset).Order(sortQuery).Find(&products).Error; err != nil {
+		c.JSON(http.StatusInternalServerError,
+			errorResponse(errors.New("unknown error while trying to fetch data")))
+
 		return
 	}
 	response := make([]Product, len(products))
 
 	for i := 0; i < len(products); i++ {
-		log.Println(response)
 		response[i] = Product{
 			products[i].ID,
 			products[i].Name,
 			products[i].Price,
-			products[i].CategoryId,
+			products[i].CategoryID,
 			products[i].Category.Name,
 		}
 	}
@@ -140,19 +154,26 @@ func (a *App) GetAllProducts(c *gin.Context) {
 func (a *App) CreateProduct(c *gin.Context) {
 	var p m.Product
 	if err := c.ShouldBindJSON(&p); err != nil {
-		c.JSON(http.StatusBadRequest, errorResponse(errors.New("Invalid payload")))
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("invalid payload")))
 		return
 	}
 
 	if err := a.DB.Create(&p).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to create product")))
+		switch {
+		case IsErrorCode(err, UniqueViolationErrCode):
+			c.JSON(http.StatusBadRequest, errorResponse(errors.New("product already exists. please use a unique product name")))
+		case IsErrorCode(err, FkeyViolationErrCode):
+			c.JSON(http.StatusBadRequest, errorResponse(errors.New("category with provided id does not exists")))
+		default:
+			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("unknown error while trying to create product")))
+		}
 		return
 	}
 	response := map[string]interface{}{
 		"ID":         p.ID,
 		"name":       p.Name,
 		"price":      p.Price,
-		"categoryId": p.CategoryId,
+		"categoryID": p.CategoryID,
 	}
 	c.JSON(http.StatusCreated, gin.H{"result": response})
 }
@@ -160,15 +181,24 @@ func (a *App) CreateProduct(c *gin.Context) {
 // Update Handler
 func (a *App) UpdateProduct(c *gin.Context) {
 	id := c.Param("id")
+	if result := paramIsInt(id); !result {
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
+		return
+	}
 	var p m.Product
 	var ctg m.Category
-	if err := c.ShouldBindJSON(&p); err != nil || p.Name == "" || p.Price == 0 || p.CategoryId == 0 {
-		c.JSON(http.StatusBadRequest, errorResponse(errors.New("Invalid payload")))
+	if err := c.ShouldBindJSON(&p); err != nil || p.Name == "" || p.Price == 0 || p.CategoryID == 0 {
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("invalid payload")))
 		return
 	}
 	// verify category exists
-	if err := a.DB.First(&ctg, p.CategoryId).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("No category exist for given categoryID")))
+	if err := a.DB.First(&ctg, p.CategoryID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("no category exist for given categoryID")))
+		return
+	}
+	// verify product exists
+	if err := a.DB.First(&p, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("no product exist for given id to update")))
 		return
 	}
 	p.Category = ctg
@@ -176,9 +206,9 @@ func (a *App) UpdateProduct(c *gin.Context) {
 		m.Product{
 			Name:       p.Name,
 			Price:      p.Price,
-			CategoryId: p.CategoryId,
+			CategoryID: p.CategoryID,
 		}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to fetch data")))
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("unknown error while trying to fetch data")))
 		return
 	}
 	const base = 10
@@ -189,7 +219,7 @@ func (a *App) UpdateProduct(c *gin.Context) {
 		"ID":         p.ID,
 		"name":       p.Name,
 		"price":      p.Price,
-		"categoryId": p.CategoryId,
+		"categoryID": p.CategoryID,
 	}
 	c.JSON(http.StatusOK, gin.H{"result": response})
 }
@@ -197,10 +227,18 @@ func (a *App) UpdateProduct(c *gin.Context) {
 // Handler for delete
 func (a *App) DeleteProduct(c *gin.Context) {
 	id := c.Param("id")
-
+	if result := paramIsInt(id); !result {
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("id parameter is not a valid integer")))
+		return
+	}
 	p := m.Product{}
+	// verify product exists
+	if err := a.DB.First(&p, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("no product exist for given id to update")))
+		return
+	}
 	if err := a.DB.Delete(&p, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while trying to delete")))
+		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("unknown error while trying to delete")))
 		return
 	}
 

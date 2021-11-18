@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	m "bitbucket.org/mobeen_ashraf1/go-starter-kit/models"
 	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -17,6 +19,8 @@ type App struct {
 	Engine *gin.Engine
 	DB     *gorm.DB
 }
+
+var db *gorm.DB
 
 func (a *App) Initialize(host, port, user, password, dbname string) {
 	dsnDefault := fmt.Sprintf(
@@ -44,11 +48,32 @@ func (a *App) Initialize(host, port, user, password, dbname string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err = a.DB.AutoMigrate(&m.Product{}, &m.Category{}); err != nil {
+	if err = a.DB.AutoMigrate(&m.Product{}, &m.Category{}, &m.User{}); err != nil {
 		log.Fatal(err)
 	}
+	db = a.DB
+}
+func GetDB() *gorm.DB {
+	return db
 }
 
 func errorResponse(err error) gin.H {
 	return gin.H{"error": err.Error()}
+}
+
+func paramIsInt(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
+}
+
+func paramIsFloat(s string) bool {
+	_, err := strconv.ParseFloat(s, 64)
+	return err == nil
+}
+
+func IsErrorCode(err error, errcode pq.ErrorCode) bool {
+	if pgerr, ok := err.(*pq.Error); ok {
+		return pgerr.Code == errcode
+	}
+	return false
 }
