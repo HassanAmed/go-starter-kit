@@ -111,11 +111,6 @@ func (a *App) DeleteCategory(c *gin.Context) {
 	products := m.Product{}
 
 	txErr := a.DB.Transaction(func(tx *gorm.DB) error {
-		defer func() {
-			if r := recover(); r != nil {
-				tx.Rollback()
-			}
-		}()
 
 		if err := tx.First(&ctg, id).Error; err != nil {
 			return err

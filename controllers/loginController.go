@@ -62,7 +62,7 @@ func (controller *loginController) SignUp(c *gin.Context) {
 	var u m.User
 	db := GetDB()
 	if err := c.ShouldBindJSON(&u); err != nil {
-		c.JSON(http.StatusBadRequest, errorResponse(errors.New(err.Error())))
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("Invalid Payload")))
 		return
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), 8)
@@ -72,8 +72,15 @@ func (controller *loginController) SignUp(c *gin.Context) {
 	u.Password = string(hashedPassword)
 
 	if err := db.Create(&u).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while Sign up try again")))
-		return
+		switch {
+		case IsErrorCode(err, UniqueViolationErrCode):
+			c.JSON(http.StatusBadRequest, errorResponse(errors.New("Already Registered")))
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, errorResponse(errors.New("Error while Signing up try again")))
+			return
+		}
+
 	}
 	c.JSON(http.StatusCreated, gin.H{"result": "success"})
 }
