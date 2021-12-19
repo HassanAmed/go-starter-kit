@@ -12,6 +12,7 @@ import (
 
 func PanicHandler(c *gin.Context, err interface{}) {
 	go SendMail(err)
+	fmt.Println(err)
 	c.JSON(http.StatusInternalServerError,
 		gin.H{"error": "Service crashed due to unexpected reason please try again later"})
 }
