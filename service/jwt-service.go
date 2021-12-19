@@ -8,7 +8,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-type JWTService interface {
+type JWTServiceInterface interface {
 	GenerateToken(name string) string
 	ValidateToken(tokenString string) (*jwt.Token, error)
 }
@@ -24,7 +24,7 @@ type jwtService struct {
 	issuer    string
 }
 
-func NewJWTService() JWTService {
+func NewJWTService() JWTServiceInterface {
 	return &jwtService{
 		secretKey: getSecretKey(),
 		issuer:    "productApi",
